@@ -1,0 +1,164 @@
+---
+title: "Final presentation"
+output: html_document
+date: "2023-12-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(RColorBrewer)
+```
+
+
+```{r Map comparing libraries in the full dataset and the ATF dataset}
+all_states <- map_data("state")
+michigan_data <- subset(all_states, region %in% c("michigan"))
+```
+
+```{r Map comparing libraries in the full dataset and the ATF dataset}
+mimap <- ggplot()+ geom_polygon(data = michigan_data, aes(x=long, y=lat, group = group), fill = "grey", color = "black") + geom_point(data = plsadi, aes(x=LONGITUD, y=LATITUDE), color = "darkgreen") + 
+  geom_point(data = fullset, aes(x= LONGITUD, y= LATITUDE), color = "purple") 
+mimap
+  ggsave("mimap.png", device = "png", width = 5, height = 5)
+```
+
+```{r}
+impress <- ggplot(fullset, aes(as.factor(VISIT), ..count..)) + 
+  geom_bar(aes(fill =as.factor(Q1)))+
+scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+  labs(x='Visited in past year', y= 'Count')+
+scale_fill_brewer(palette = "PRGn", name = "Overall impression of local library", labels=c("2", "3", "5", "6", "7", "8", "9", "10 An Excellent Library"))
+
+impress
+ggsave("impress.png", device = "png", width = 8, height = 5)
+  
+```
+
+
+```{r Visits vs funding priority}
+plot <- ggplot(fullset, aes(x=VISIT, y=Q9_1_5, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='visits', y= 'Q9_1_5 Top priority allocating tax dollars - Public Library')
+
+tax <- ggplot(fullset, aes(as.factor(VISIT))) + 
+  geom_bar(aes(fill = as.factor(Q9_1_5)))+
+  scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+  labs(x='Visited in past year', y= 'Count')+
+scale_fill_brewer(palette = "PRGn",name = "Top priority allocating tax dollars - Public Library", labels=c("1 Strongly Disagree", "2", "3", "4", "5", "6", "7", "8", "9", "10 Strongly Agree"))
+
+print(tax)
+ggsave("tax.png", device = "png", width = 8, height = 5)
+
+
+```
+
+
+
+```{r population vs visits}
+cor.test(plsadi$POPU_LSA,plsadi$VISITS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=POPU_LSA, y=VISITS))+
+  geom_point(color = "darkgreen", na.rm= TRUE)+ 
+  labs(x='Population of Service Area', y= 'visits', title = "Visits by Population of Service Area")
+plot
+ggsave("plot.png", device = "png", width = 8, height = 5)
+```
+
+```{r}
+#also maybe weight by branches
+highvisit <- plsadi %>%
+  filter(VISITS > 2000000)
+
+print(highvisit)
+```
+
+
+
+```{r}
+#add a cor test
+#levels(fullset$VISIT) <- c('No', 'Yes')
+plot <- ggplot(fullset, aes(VISIT, s6_b, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Visited in past year', y= 's6_b I would be willing to pay more in taxes if it meant better funding for the local public library ')
+
+funding <- ggplot(fullset, aes(as.factor(VISIT), ..count..)) + 
+  geom_bar(aes(fill = as_factor(s6_b)))+
+  scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+  labs(x='Visited in past year', y= 'Count')+
+scale_fill_brewer(palette = "PRGn", name = "I would be willing to pay more in taxes
+  if it meant better funding for the local public library", labels=c("1 Strongly Disagree", "2", "3", "4", "5", "6", "7", "8", "9", "10 Strongly Agree"))
+
+print(funding)
+ggsave("funding.png", device = "png", width = 8, height = 5)
+
+```
+
+```{r}
+
+plot <- ggplot(fullset, aes(x=SS8, y=VISIT, group=SS8))+
+  geom_count(na.rm= TRUE)
+plot + labs(x='child', y= 'visit')
+
+
+ggplot(fullset, aes(VISIT, ..count..)) + geom_bar(aes(fill =as_factor(SS8)), position = "dodge")
+#it appears of those who have visited, more of them are child-less
+```
+```{r Hours library is open compared to ADI of its zipcode}
+
+plsadi$HRS_BRANCH <- plsadi$HRS_OPEN/(plsadi$CENTLIB+plsadi$BRANLIB)
+
+
+cor.test(plsadi$ADI,plsadi$HRS_BRANCH, 
+         alternative="greater", 
+         method= "pearson")
+
+plot2 <- ggplot(plsadi, aes(x=ADI, y=HRS_BRANCH))+
+  geom_point(color = "darkgreen", na.rm= TRUE)+ 
+  labs(x='Area Deprivation Index', y= 'Hours Open Per Branch')
+plot2
+ggsave("plot2.png", device = "png", width = 8, height = 5)
+
+```
+
+```{r}
+cor.test(plsadi$ADI,plsadi$TOTINCM, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=TOTINCM))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'revenue')
+```
+
+```{r}
+cor.test(fullset$TOTINCM,fullset$Q4_17, 
+         alternative="greater", 
+         method= "pearson")
+
+plot3 <- ggplot(fullset, aes(x=TOTINCM, y=Q4_17))+
+  geom_point(color = "darkgreen", na.rm= TRUE)+ 
+  labs(x='Total Income', y= 'feel well funded', title = "Overall Impression Local Library by Library Income")
+plot3
+ggsave("plot3.png", device = "png", width = 8, height = 5)
+```
+```{r}
+cor.test(fullset$TOTINCM,fullset$Q4_18, 
+         alternative="greater", 
+         method= "pearson")
+
+plot3 <- ggplot(fullset, aes(x=Q4_18, y=TOTINCM))+
+  geom_point(color = "darkgreen", na.rm= TRUE)+ 
+  labs(x='Total Income', y= 'not enough money', title = "Overall Impression Local Library by Library Income")
+plot3
+ggsave("plot3.png", device = "png", width = 8, height = 5)
+```
+
+

@@ -1,0 +1,552 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-11-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(DBI)
+library(dbplyr)
+library(bigrquery)
+library(stringr)
+library(readxl)
+```
+
+```{r}
+project <- "sm-727"
+```
+
+```{r}
+#SQL connection
+con <- dbConnect(
+  bigrquery::bigquery(),
+  project = "bigquery-public-data",
+  dataset = "broadstreet_adi",
+  billing = project
+)
+con
+```
+```{r}
+#I need table 3
+dbListTables(con)
+```
+
+```{r}
+#selects whole ADI by zipcode table.. it works
+sql <- 'SELECT *
+        FROM `area_deprivation_index_by_zipcode` 
+        WHERE year = 2018'
+```
+
+
+```{r}
+subtable <- dbGetQuery(con, sql)
+```
+```{r}
+#subsets table to contain MI zipcodes and remove NAs
+mitable <- subset(subtable, zipcode>=48001 & zipcode<= 49971)
+mitable <- na.omit(mitable)
+#save table as csv so I dont have to call database again
+write_excel_csv(mitable, file= "mitable.csv")
+```
+
+```{r}
+ATF <- read_excel("~/Desktop/SURVMETH 727/Final project/2018_From_Awareness_to_Funding_Data_File.xlsx", sheet = 2)
+```
+
+
+```{r}
+#rename variables... I wont be using every variable but want to clean them in case I use this data again
+miatf <- ATF %>%
+  rename(SS1 = 'SS1 Gender',
+         SS2 = 'SS2 Age', 
+         SS3 = 'SS3 Income', 
+         SS4 = 'SS4 Education',
+         SS5 = 'SS5 Thinking about that locality on your mailing address, approximately what is the population of your city, town, village or suburb?',
+         SS6 = 'SS6 Please provide the five-digit ZIP code of your primary residence.', 
+         SS7 = 'SS7 Marital status', 
+         SS8 = 'SS8 Children under 18?',
+         SS9 = 'SS9 Occupation',
+         SS10 = 'SS10 If employed in other field',
+         S1 = 'S1 Registered to vote?',
+         S2 = 'S2 Voted in November 2016 Presidential election?',
+         S3 = 'S3 Voted in November 2014 mid-term election?',
+         S3a = 'S3a Likely to vote in primary and special elections?',
+         S3b = 'S3b Likely to vote in 2018 midterm election?',
+         S3c = 'S3c Likely to vote in 2020 Presidential election?',
+         S4 = 'S4 Likely to vote in local issues elections?',
+         S4a = 'S4a Has there been a library referendum in past 5 years?',
+         S4b = 'S4b Did you vote in favor of or against the library referendum, ballot initiative or bond measure?  If there has been more than one, please indicate how you voted most recently',
+         S5 = "S5 Now we’d like you to think ahead to the next election and assume that you are at the ballot box and ready to cast your vote.  If there was a referendum, ballot initiative or bond measure for your local public library on the ballot, how do you think you would vote?",
+         s6_a = 's6_a I would be willing to pay more in taxes that would fund operating costs of the local public library, like building maintenance fees and staff salaries',
+         s6_b = 's6_b I would be willing to pay more in taxes if it meant better funding for the local public library',
+         s6_c = 's6_c I would be willing to pay more in taxes that would fund a new building or branch for the local public library',
+         s6_d = 's6_d  I support tax increases that will improve my community',
+         s6_e = "s6_e I think raising taxes to fund the public library would be a waste of the public's money",
+         s6_f = 's6_f I would not be willing to pay higher taxes in order to fund the local public library',
+         s6_g = "s6_g I don't support tax increases that fund services I don't use or benefit from",
+         s6_h = "s6_h I don't pay much attention to what's going on at the public library",
+         s6_i = "s6_i It's been so long since I've been to the library that I'm not even sure what it has to offer anymore",
+         s6_j = 's6_j I feel that financially I am pretty well off',
+         s6_k = 's6_k People would consider me kind of a book worm',
+         s6_l = 's6_l The public library offers services that are equally important to the community as the police and other emergency services.',
+         s6_m = 's6_m Compared to most people, I know a lot about what my local public library has to offer',
+         s6_n = "s6_n  I don't go to the library in my community very often",
+         s6_o = "s6_o The information that you get from the public library is pretty much the same, regardless of which library you're in",
+         s6_p = 's6_p  People would consider me somewhat influential in the town where I live',
+         s6_q = 's6_q Music and the arts are important aspects of a well rounded education',
+         s6_r = 's6_r The public library should be a place for communities to gather together',
+         s6_s = 's6_s The primary purpose of the library is to ensure free and equal access to books and information for everyone',
+         s6_t = 's6_t Whether or not the local public library is good or bad has very little impact on the community',
+         s6_u = "s6_u People in my community don't use the library enough to justify spending additional money on it",
+         s6_v = "s6_v  It's just easier to buy books from a bookstore/online bookstore than to borrow them from the local public library",
+         s6_w = 's6_w I think the local government provides adequate funding for the public library',
+         s6_x = 's6_x  The public library in my community is good enough as it is',
+         s6_y = 's6_y The public library should be able to operate on its current budget without an increase',
+         s6_z = "s6_z  I can't afford to pay more taxes",
+         s6_aa = "s6_aa People in my community can't afford to have their taxes raised",
+         s6_bb = 's6_bb I oppose tax increases across the board',
+         s6_cc = 's6_cc The library is no longer necessary in the Internet age',
+         s6_dd = 's6_dd The public library charges fees and fines that keep people from using it as much as they normally would',
+         s6_ee = 's6_ee The librarians at the local public library are not knowledgeable enough about technology to help answer my questions',
+         s6_ff = 's6_ff  Studying music and the arts takes time away from the important subjects like reading, writing, and arithmetic',
+         s6_gg = "s6_gg The public library contains books and materials that I don't approve of",
+         s6_hh = 's6_hh All the information in the library I could just as easily get on the Internet',
+         s6_ii = 's6_ii The information you can find yourself using search engines like Google and Yahoo! is every bit as good as the information you can get by doing a library search',
+         s6_jj = "s6_jj It's easier to do research on the Internet using search engines like Google and Yahoo! than in the local public library",
+         s6_kk = "s6_kk  My public library is not top of mind - I just don't think to go there",
+         s6_ll = 's6_ll Funding the library is not as important as funding the public schools',
+         s6_mm = "s6_mm It's much more important for a community to fund emergency services such as fire and police than the public library",
+         s6_nn = 's6_nn The quality of the public library has a big impact on the community',
+         s6_oo = 's6_oo Even in the Internet age, the library remains an invaluable resource to the community',
+         s6_pp = 's6_pp There’s information at the local public library that you just can’t find with search engines like Google or  Yahoo!',
+         s6_qq = 's6_qq I really enjoy going to my local public library',
+         s6_rr = 's6_rr The public library is a resource we can’t live without',
+         S6a1 = 'S6a1 Do you have a library card (or some other form of authorization) for using at your local public library?',
+         S6b1 = 'S6b1 In your community, are you required to pay an annual fee in order to be able to use your local public library?',
+         S7 = 'S7 How many times have you visited your local public library in the past 12 months',
+         S7a = 'S7a When was the last time you visited your local public library?',
+         S7b = 'S7b Do you access the Internet from the library, using either the library’s public computers or WiFi?',
+         S7c = 'S7c And how many times have you visited the website of your local public library in the past 12 months?',
+         S7d = 'S7d When was the last time you visited your local public library’s website?',
+         VISIT = 'Visited Lib in Past Year',
+         S8_1 = 'S8_1 Check out non-fiction print books',
+         S8_2 = "S8_2 Check out children's print books",
+         S8_3 = 'S8_3 Use print reference materials that are for use only in the library such as encyclopedias, almanacs and dictionaries',
+         S8_4 = 'S8_4 Do research or work for an organization that you belong to',
+         S8_5 = 'S8_5 Use the library as a resource for home schooling',
+         S8_6 = 'S8_6 Do homework/study',
+         S8_7 = 'S8_7  Use the computer/Internet to send or receive e-mail',
+         S8_8 = 'S8_8 Use the computer/Internet to search for information with search engines like Google',
+         S8_9 = 'S8_9 Attend meetings in the community meeting rooms',
+         S8_10 = 'S8_10  Use the photocopier',
+         S8_11 = 'S8_11 Check out videos or DVDs for adults',
+         S8_12 = 'S8_12 Check out videos or DVDs for kids',
+         S8_13 = 'S8_13 Check out adult fiction or bestseller print books',
+         S8_14 = 'S8_14 Research your genealogy',
+         S8_15 = 'S8_15 Use the library as a resource for job seeking',
+         S8_16 = 'S8_16 Attend English as a second language classes',
+         S8_17 = 'S8_17 Check out books and other materials in languages other than English',
+         S8_18 = 'S8_18 Access the Internet using the library’s WiFi',
+         S8_19 = 'S8_19 Get librarian’s assistance (with research, technology, book recommendations, etc.)',
+         S8_20 = 'S8_20 Obtain access to online or print government information or resources',
+         S8_21 = 'S8_21 Attend a public program, such as an author reading, movie showing, music performance, family program, etc.',
+         S8_22 = 'S8_22 Do research for personal investing or general financial topics',
+         S8_23 = 'S8_23 Get computer/Internet/technology training',
+         S8_24 = 'S8_24  Access the library’s website or app for information or materials through a tablet computer, smartphone or other mobile device',
+         S8_25 = 'S8_25 Get support for starting or growing your own business (by taking classes, conducting research, etc.)',
+         S8_26 = 'S8_26 Attend or organize community meetings',
+         S8_27 = 'S8_27 User maker equipment such as 3D printers, Arduino boards, etc.',
+         S8_28 = 'S8_28  Check out laptops, tablets, mobile hotspots or other computer hardware',
+         S8_29 = 'S8_29 Check out non-book items such as tools, cookware, gardening equipment, etc.',
+         S8_30 = 'S8_30 Get legal help or information',
+         S8_31 = 'S8_31 Research health or wellness topics',
+         S8_32 = 'S8_32 Get tutoring (for example, adult literacy, homework, classes, etc.)',
+         S8_33 = 'S8_33  Use digital labs for coding or music making',
+         S8_34 = 'S8_34 Use online resources such as databases, ebooks, ejournals, streaming music/videos, etc.',
+         S8a = 'S8a Please rate your overall impression of the librarians at your local public library on a 10-point scale, where 10 means they’re “Excellent” and 1 means they’re “Unsatisfactory”.',
+         s9_a = 's9_a Knowledgeable about my community',
+         s9_b = "s9_b Someone you'd go to with a question before going to the Internet",
+         s9_c = 's9_c Can research topics better than you can do alone on the Internet',
+         s9_d = 's9_d More of an expert in technology than anyone else',
+         s9_e = 's9_e Knows better than anyone else what music and movies kids would love',
+         s9_f = 's9_f Really understands how to engage kids with computers and technology',
+         s9_g = 's9_g Well known in the community',
+         s9_h = 's9_h Works closely with local politicians and community leaders to get public library funding and support',
+         s9_i = "s9_i Understands the community's needs and how to address them through the public library",
+         s9_j = 's9_j Works closely with other community leaders to find ways to better the community',
+         s9_k = "s9_k Able to access information through technology in ways that ordinary people can't do",
+         s9_l = "s9_l Has excellent computer skills",
+         s9_m = 's9_m Able to help non-English speaking patrons',
+         s9_n = 's9_n Friendly and approachable',
+         s9_o = 's9_o True advocate for lifelong learning',
+         s9_p = 's9_p  Expert at connecting people to needed information and resources',
+         s9_q = 's9_q  Makes the library a place for fun and creativity',
+         s9_r = 's9_r  Knows what books children would love',
+         s9_s = 's9_s Recommends books, music, movies, websites and other online information sources that you don’t know about',
+         s9_t = 's9_t Teaches me how to find trustworthy information and materials',
+         s9_u = 's9_u Reaches out to ALL members of the community to make sure they know the library is open to them',
+         s9_v = 's9_v Works closely with parents and caregivers so they can support children’s learning',
+         s9_w = 's9_w  Is someone I can relate to',
+         s10_a = 's10_a Knowledgeable about my community',
+         s10_b = "s10_b Someone you'd go to with a question before going to the Internet",
+         s10_c = 's10_c Can research topics better than you can do alone on the Internet',
+         s10_d = 's10_d More of an expert in technology than anyone else',
+         s10_e = 's10_e Knows better than anyone else what music and movies kids would love',
+         s10_f = 's10_f Really understands how to engage kids with computers and technology',
+         s10_g = 's10_g Well known in the community',
+         s10_h = 's10_h Works closely with local politicians and community leaders to get public library funding and support',
+         s10_i = "s10_i Understands the community's needs and how to address them through the public library",
+         s10_j = 's10_j Works closely with other community leaders to find ways to better the community',
+         s10_k = "s10_k Able to access information through technology in ways that ordinary people can't do",
+         s10_l = 's10_l Has excellent computer skills',
+         s10_m = 's10_m Able to help non-English speaking patrons',
+         s10_n = 's10_n Friendly and approachable',
+         s10_o = 's10_o True advocate for lifelong learning',
+         s10_p = 's10_p  Expert at connecting people to needed information and resources',
+         s10_q = 's10_q  Makes the library a place for fun and creativity',
+         s10_r = 's10_r  Knows what books children would love',
+         s10_s = 's10_s Recommends books, music, movies, websites and other online information sources that you don’t know about',
+         s10_t = 's10_t Teaches me how to find trustworthy information and materials',
+         s10_u = 's10_u Reaches out to ALL members of the community to make sure they know the library is open to them',
+         s10_v = 's10_v Works closely with parents and caregivers so they can support children’s learning',
+         s10_w = 's10_w  Is someone I can relate to',
+         Q1 = 'Q1 Overall Impression Local Library',
+         Q2_1 = 'Q2_1 Offers quiet areas for doing work or research',
+         Q2_2 = 'Q2_2 A large enough facility to meet the needs of the community',
+         Q2_3 = 'Q2_3 Provides wireless (WiFi) Internet access',
+         Q2_4 = 'Q2_4 Provides free access to books and technology that some people may not be able to afford',
+         Q2_5 = 'Q2_5 Offers free access to computers and the Internet for everyone',
+         Q2_6 = 'Q2_6 Offers activities and entertainment you can’t find anywhere else in the community',
+         Q2_7 = 'Q2_7 Supports adult literacy through reading and writing programs',
+         Q2_8 = 'Q2_8 An excellent resource for students to get help with homework',
+         Q2_9 = 'Q2_9 Prepares young children for school',
+         Q2_10 = 'Q2_10 Offers something appealing for people of every age, gender, ethnicity and religion',
+         Q2_11 = 'Q2_11 Provides classes, programs and materials for immigrants and non-English speakers',
+         Q2_12 = 'Q2_12 Provides tools to help people hunt for jobs',
+         Q2_13 = 'Q2_13 Helps provide people with skills for the workplace',
+         Q2_14 = 'Q2_14 A place to turn to for help in disaster situations',
+         Q2_15 = 'Q2_15 A place for people in the community to gather and socialize',
+         Q2_16 = 'Q2_16 Has convenient hours of operation',
+         Q2_17 = 'Q2_17 Has the right staff to meet the needs of the community',
+         Q2_18 = 'Q2_18 Offers access to online resources not freely available elsewhere',
+         Q2_19 = 'Q2_19 Provides access to a broad range of books, music, movies and magazines to explore',
+         Q2_20 = 'Q2_20 An important resource for small businesses (by providing space, WiFi, business expertise and resources, etc.)',
+         Q2_21 = 'Q2_21 Helps people find trustworthy information',
+         Q2_22 = 'Q2_22 Offers a website with a wide range of online research, e-books, music and video for download',
+         Q2_23 = 'Q2_23 Offers ways for me to manage my library account through my smartphone or other mobile device',
+         Q2_24 = 'Q2_24  Is convenient to get to',
+         Q2_25 = 'Q2_25 Supports civic discourse and community building',
+         Q2_26 = 'Q2_26 Enhances the quality of life in a community',
+         Q2_27 = 'Q2_27 Offers services and resources for people to educate themselves or learn about topics of personal interest',
+         Q3_1 = 'Q3_1 Offers quiet areas for doing work or research',
+
+         Q3_2 = 'Q3_2 A large enough facility to meet the needs of the community',
+
+Q3_3 = 'Q3_3 Provides wireless (WiFi) Internet access',
+
+Q3_4 = 'Q3_4 Provides free access to books and technology that some people may not be able to afford',
+
+Q3_5 = 'Q3_5 Offers free access to computers and the Internet for everyone',
+
+Q3_6 = 'Q3_6 Offers activities and entertainment you can’t find anywhere else in the community',
+
+Q3_7 = 'Q3_7 Supports adult literacy through reading and writing programs',
+
+Q3_8 = 'Q3_8 An excellent resource for students to get help with homework',
+
+Q3_9 = 'Q3_9 Prepares young children for school',
+
+Q3_10 = 'Q3_10 Offers something appealing for people of every age, gender, ethnicity and religion',
+
+Q3_11 = 'Q3_11 Provides classes, programs and materials for immigrants and non-English speakers',
+
+Q3_12 = 'Q3_12 Provides tools to help people hunt for jobs',
+
+Q3_13 = 'Q3_13 Helps provide people with skills for the workplace',
+
+Q3_14 = 'Q3_14 A place to turn to for help in disaster situations',
+
+Q3_15 = 'Q3_15 A place for people in the community to gather and socialize',
+
+Q3_16 = 'Q3_16 Has convenient hours of operation',
+
+Q3_17 = 'Q3_17 Has the right staff to meet the needs of the community',
+
+Q3_18 = 'Q3_18 Offers access to online resources not freely available elsewhere',
+
+Q3_19 = 'Q3_19 Provides access to a broad range of books, music, movies and magazines to explore',
+
+Q3_20 = 'Q3_20 An important resource for small businesses (by providing space, WiFi, business expertise and resources, etc.)',
+
+Q3_21 = 'Q3_21 Helps people find trustworthy information',
+
+Q3_22 = 'Q3_22 Offers a website with a wide range of online research, e-books, music and video for downloa',
+
+Q3_23 = 'Q3_23 Offers ways for me to manage my library account through my smartphone or other mobile device',
+
+Q3_24 = 'Q3_24 Is convenient to get to',
+
+Q3_25 = 'Q3_25 Supports civic discourse and community building',
+
+Q3_26 = 'Q3_26 Enhances the quality of life in a community',
+
+Q3_27 = 'Q3_27 Offers services and resources for people to educate themselves or learn about topics of personal interest',
+
+Q4_1 = 'Q4_1 The public library stimulates growth and development in a community',
+
+Q4_2 = 'Q4_2 If the library in my community were to shut down, something essential and important would be lost, affecting the whole community',
+
+Q4_3 = 'Q4_3 Having a high quality public library helps raise property values in the community',
+
+Q4_4 = 'Q4_4 Having a reputable public library doesn’t have much impact on the status and image of a community',
+
+Q4_5 = 'Q4_5 Having an excellent public library is a source of pride for a community',
+
+Q4_6 = 'Q4_6 Local support can make a big difference in the quality of the library',
+
+Q4_7 = 'Q4_7 With the Internet, the public library has become obsolete',
+
+Q4_8 = 'Q4_8 The public library has done a good job of keeping up with changing technology',
+
+Q4_9 = 'Q4_9 The public library does an excellent job of helping prepare children for school',
+
+Q4_10 = 'Q4_10 The library is an excellent resource for kids to get help with their homework',
+
+Q4_11 = 'Q4_11 Libraries just aren’t as important in kids’ lives as they once were',
+
+Q4_12 = 'Q4_12 The public library is a social hub in my community where people frequently get together',
+
+Q4_13 = 'Q4_13 The public library should be a place of serious thought and education, not a social gathering place',
+
+Q4_14 = 'Q4_14 For some people, the library is the only place to access computers or the Internet',
+
+Q4_15 = 'Q4_15 Almost everyone today has access to the Internet at home or at work',
+
+Q4_16 = 'Q4_16 I feel well-informed about how my local public library gets its funding',
+
+Q4_17 = 'Q4_17  Between donations, fundraising and government funding, I feel like the local public library is well funded',
+
+Q4_18 = 'Q4_18 My local public library doesn’t have enough money for day-to-day operations',
+
+Q5_1 = 'Q5_1 Education',
+
+Q5_2 = 'Q5_2 Employment',
+
+Q5_3 = 'Q5_3 Entrepreneurship',
+
+Q5_4 = 'Q5_4 Engagement and participation in the community',
+
+Q5_5 = 'Q5_5 Empowering people in the community',
+
+Q6_1 = 'Q6_1 Effect on your community',
+
+Q6_2 = 'Q6_2 Effect on your family',
+
+Q9_1_1 = 'Q9_1_1 Top priority allocating tax dollars - Police',
+
+Q9_1_2 = 'Q9_1_2 Top priority allocating tax dollars - Fire',
+
+Q9_1_3 = 'Q9_1_3 Top priority allocating tax dollars - Park',
+Q9_1_4 = 'Q9_1_4 Top priority allocating tax dollars - Public Health',
+
+Q9_1_5 = 'Q9_1_5 Top priority allocating tax dollars - Public Library',
+
+Q9_1_6 = 'Q9_1_6 Top priority allocating tax dollars - Public Schools',
+
+Q9_2_1 = 'Q9_2_1 First thing cut in budget crisis - Police',
+
+Q9_2_2 = 'Q9_2_2 First thing cut in budget crisis - Fire',
+
+Q9_2_3 = 'Q9_2_3 First thing cut in budget crisis - Park',
+
+Q9_2_4 = 'Q9_2_4 First thing cut in budget crisis - Public Health',
+
+Q9_2_5 = 'Q9_2_5 First thing cut in budget crisis - Public Library',
+
+Q9_2_6 = 'Q9_2_6 First thing cut in budget crisis - Public Schools',
+
+Q9_3_1 = 'Q9_3_1 Willing to pay more in taxes to better fund - Police',
+
+Q9_3_2 = 'Q9_3_2 Willing to pay more in taxes to better fund - Fire',
+
+Q9_3_3 = 'Q9_3_3 Willing to pay more in taxes to better fund - Park',
+
+Q9_3_4 = 'Q9_3_4 Willing to pay more in taxes to better fund - Public Health',
+
+Q9_3_5 = 'Q9_3_5 Willing to pay more in taxes to better fund - Public Library',
+
+Q9_3_6 = 'Q9_3_6 Willing to pay more in taxes to better fund - Public Schools',
+
+Q11 = 'Q11 Contributed to fundraising groups',
+
+Q12 = 'Q12 Think public libraries get most of their funding',
+
+Q12_Other_Specify = 'Q12_Other_Specify',
+
+Q13 = 'Q13 Public libraries amount of federal funding',
+
+Q14 = 'Q14 Importance of a strong public library system',
+
+Q15 = 'Q15 Federal funding of public libraries',
+
+Q16 = 'Q16 Favor or oppose eliminating federal funding for public libraries',
+
+Q17 = 'Q17 Knowing .4% funding from federal - favor or oppose eliminating federal funding for public libraries',
+
+Q18 = 'Q18 Race',
+
+Q19 = 'Q19 Born in US',
+
+Q20 = 'Q20 # of Yrs Lived in US',
+
+Q21 = 'Q21 Primary residence',
+
+Q21_Other = 'Q21_Other Primary Residence'
+         )
+```
+
+```{r}
+write_excel_csv(miatf, file = "clean.atf.csv")
+```
+
+
+```{r}
+#clean atf dataset to only include MI zip codes and variables of interest
+miatf <- subset(miatf, SS6>=48001 & SS6<= 49971)
+miatf <- select(miatf, c('WEIGHT',	'SS1', 'SS2', 'SS3', 'SS4', 'SS6', 'SS8', 'SS9', 's6_b', 's6_d', 's6_g', 's6_u', 's6_w', 's6_z', 's6_aa', 's6_gg', 's6_ll', 's6_nn', 'S6b1', 'VISIT', 'S8_31', 's9_p', 's10_t', 'Q1', 'Q2_4', 'Q2_12', 'Q2_13', 'Q2_14', 'Q2_26', 'Q4_17', 'Q4_18', 'Q9_1_4', 'Q9_1_5', 'Q9_2_4', 'Q9_2_5', 'Q9_3_4', 'Q9_3_5', 'Q14', 'Q16', 'Q18'))
+```
+
+
+```{r}
+#Remove text from numeric data
+
+miatfx <- miatf
+
+#miatfclean <- data.frame(matrix(ncol = 39, nrow = 90))
+
+cleantext <- function(miatfx){
+  if(is.character(miatfx)) {
+   miatfx <- gsub('10 Agree Strongly', '10', miatfx)
+    miatfx <- gsub('1 Disagree Strongly', '1', miatfx)
+     miatfx <- gsub('10 Strongly Agree', '10', miatfx)
+    miatfx <- gsub('1 Strongly Disagree', '1', miatfx)
+    miatfx <- gsub('10 Extremely important', '10', miatfx)
+     miatfx <- gsub('10 Extremely Important', '10', miatfx)
+     miatfx <- gsub('2 Female', '2', miatfx)
+     miatfx <- gsub('1 Male', '1', miatfx)
+     
+miatfx <- gsub('1 Less than \\$20K', '1', miatfx)
+miatfx <- gsub('2 \\$20K to \\$29K', '2', miatfx)
+miatfx <- gsub('3 \\$30K to \\$39K', '3', miatfx)
+miatfx <- gsub('4 \\$40K to \\$49K', '4', miatfx)
+miatfx <- gsub('5 \\$50K to \\$59K', '5', miatfx)
+miatfx <- gsub('6 \\$60K to \\$74K', '6', miatfx)
+miatfx <- gsub('7 \\$75K to \\$99K', '7', miatfx)
+miatfx <- gsub('8 \\$100K to \\$149K', '8', miatfx)
+miatfx <- gsub('9 \\$150K or more', '9', miatfx)
+  
+miatfx <- gsub('1 Less than high school graduate', '1', miatfx)
+miatfx <- gsub('2 High school graduate', '2', miatfx)
+miatfx <- gsub('3 Some college but no degree of any type', '3', miatfx)
+miatfx <- gsub('4 Two-year associates degree', '4', miatfx)
+miatfx <- gsub('5 Four-year college degree', '5', miatfx)
+miatfx <- gsub('6 Post-graduate degree', '6', miatfx)
+
+miatfx <- gsub('1 Yes', '1', miatfx)
+miatfx <- gsub('2 No', '2', miatfx)
+miatfx <- gsub("3 Don't know", '3', miatfx)
+
+miatfx <- gsub('1 Business Owner', '1', miatfx)
+miatfx <- gsub('2 Executive/Upper Management', '2', miatfx)
+miatfx <- gsub('3 IT/MIS Professional', '3', miatfx)
+miatfx <- gsub('4 Doctor/Surgeon', '4', miatfx)
+miatfx <- gsub('5 Teacher/Educator', '5', miatfx)
+miatfx <- gsub('6 Librarian', '6', miatfx)
+miatfx <- gsub('7 Housewife/Stay at home parent', '7', miatfx)
+miatfx <- gsub('8 Employed in other field', '8', miatfx)
+miatfx <- gsub('9 Retired', '9', miatfx)
+miatfx <- gsub('10 Not currently employed, but not retired', '10', miatfx)
+
+miatfx <- gsub('10 Describes them extremely well', '10', miatfx)
+miatfx <- gsub('1 Doesn\\\'t describe them at all', '1', miatfx)
+
+miatfx <- gsub('10 An Excellent Library', '10', miatfx)
+miatfx <- gsub('10 Extremely Important', '10', miatfx)
+miatfx <- gsub('1 Not at all Important', '1', miatfx)
+
+miatfx <- gsub('1 Strongly favor', '1', miatfx)
+miatfx <- gsub('2 Somewhat favor', '2', miatfx)
+miatfx <- gsub('3 Somewhat oppose', '3', miatfx)
+miatfx <- gsub('4 Strongly oppose', '4', miatfx)
+miatfx <- gsub('5 Not sure', '5', miatfx)
+
+miatfx <- gsub('1 White/Not Hispanic', '1', miatfx)
+miatfx <- gsub('2 Black/African American', '2', miatfx)
+miatfx <- gsub('3 Hispanic', '3', miatfx)
+miatfx <- gsub('4 Asian', '4', miatfx)
+miatfx <- gsub('5 Other', '5', miatfx)
+
+miatfx <- gsub('2 Ages 18-24', '2', miatfx)
+miatfx <- gsub('3 Ages 25-29', '3', miatfx)
+miatfx <- gsub('4 Ages 30-39', '4', miatfx)
+miatfx <- gsub('5 Ages 40-49', '5', miatfx)
+miatfx <- gsub('6 Ages 50-59', '6', miatfx)
+miatfx <- gsub('7 Ages 60-69', '7', miatfx)
+miatfx <- gsub('8 Ages 70-79', '8', miatfx)
+miatfx <- gsub('9 Ages 80-89', '9', miatfx)
+miatfx <- gsub('10 Ages 90+', '10', miatfx)
+
+miatfx <- gsub('1 Never - I\\\'m not aware of this library service', '1', miatfx)
+miatfx <- gsub('2 Never - I\\\'m aware of this service but haven\\\'t used it', '2', miatfx)
+miatfx <- gsub('3 Once a year or less often', '3', miatfx)
+miatfx <- gsub('4 Once every 6 months', '4', miatfx)
+miatfx <- gsub('5 Once every 2-5 months', '5', miatfx)
+miatfx <- gsub('6 Once a month', '6', miatfx)
+miatfx <- gsub('7 Once every 2-3 weeks', '7', miatfx)
+miatfx <- gsub('8 Once a week or more often', '8', miatfx)
+ } else {
+ }}
+
+miatfx[] <-lapply(miatfx, "cleantext")
+#clean VISIT Y/N to 1/0
+
+miatfx$VISIT <- gsub('Y', '1', miatfx$VISIT)
+miatfx$VISIT <- gsub('N', '0', miatfx$VISIT)
+```
+
+
+```{r}
+#remove Coresample (not using) add weight back to miatfclean
+miatfx$CoreSample <- NULL
+
+miatfx<- cbind(miatfx, miatf$WEIGHT)
+miatfx<- cbind(miatfx, miatf$SS6)
+
+#rename columns
+names(miatfx)[39] <- "WEIGHT"
+names(miatfx)[40] <- "ZIPCODE"
+```
+
+
+```{r}
+write_excel_csv(miatfx, file = "use.miatf.csv")
+```
+
+
+```{r}
+PLS <- read.csv('~/Desktop/SURVMETH 727/Final project/pls_fy2018_data_files_csv 2/pls_fy18_ae_pud18i.csv')
+
+mipls <- subset(PLS, STABR == 'MI')
+mipls <- select(mipls, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MASTER', 'LIBRARIA', 'OTHPAID', 'TOTSTAFF', 'LOCGVT', 'STGVT', 'FEDGVT', 'TOTINCM', 'SALARIES', 'TOTEXPCO', 'TOTOPEXP', 'CAP_REV', 'CAPITAL', 'HRS_OPEN', 'VISITS', 'REGBOR', 'TOTCIR', 'TOTCOLL', 'TOTPRO', 'TOTATTEN', 'PITUSR', 'WIFISESS', 'LONGITUD', 'LATITUDE', 'CNTYPOP'))
+
+write_excel_csv(mipls, file = "use.mipls.csv")
+
+
+```
+
