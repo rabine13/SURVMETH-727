@@ -1,0 +1,285 @@
+---
+title: "Final Project"
+output: pdf_document
+date: "2023-12-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(DBI)
+library(dbplyr)
+library(bigrquery)
+library(readxl)
+library(ggplot2)
+library(stringr)
+library(stringr)
+library(plyr)
+library(ggmap)
+library(dplyr)
+```
+https://github.com/rabine13/SURVMETH-727
+
+
+```{r}
+adi <- read_csv("~/Desktop/SURVMETH 727/Final project/mitable.csv")
+atf <- read_csv("~/Desktop/SURVMETH 727/Final project/use.miatf.csv")
+pls <- read_csv("~/Desktop/SURVMETH 727/Final project/use.mipls.csv")
+```
+
+```{r Final merge and clean}
+plsadi <- merge(pls, adi, by.x = "ZIP", by.y = "zipcode", all= FALSE)
+fullset <- merge(plsadi, atf, by.x = "ZIP", by.y = "ZIPCODE", all = FALSE)
+
+#remove geo_id, description, year
+
+fullset$geo_id <- NULL
+fullset$description <- NULL
+fullset$year <- NULL
+
+names(plsadi)[34] <- 'ADI'
+names(fullset)[31] <- 'ADI'
+
+```
+
+```{r Visits vs ADI}
+cor.test(plsadi$ADI,plsadi$VISITS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=VISITS))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='area deprivation index', y= 'visits')
+
+#with percent of pop that has visited
+plsadi$PERCENT_VISIT <- (plsadi$VISITS/plsadi$POPU_LSA)*100
+
+cor.test(plsadi$ADI,plsadi$PERCENT_VISIT, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=PERCENT_VISIT))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='area deprivation index', y= 'percent that visited')
+
+#something is up with the VISITS variable... why so many visits!!
+```
+There is no significant correlation between ADI and visits for libraries surveyed in the Public Library Survey
+
+```{r whether sample member had visited vs adi of their zip}
+plot <- ggplot(fullset, aes(x=VISIT, y=ADI, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='visits', y= 'adi')
+```
+among sample members of the awareness to funding sample who had visited a library in the past year. ...
+
+
+```{r Visits vs funding priority}
+#do something similar to above but comparing whether they have visited with their willingness to fund
+plot <- ggplot(fullset, aes(x=VISIT, y=Q9_1_5, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='has visited in past year', y= 'Q9_1_5 Top priority allocating tax dollars - Public Library')
+```
+
+
+
+
+```{r Hours library is open compared to ADI of its zipcode}
+
+plsadi$HRS_BRANCH <- plsadi$HRS_OPEN/(plsadi$CENTLIB+plsadi$BRANLIB)
+
+
+cor.test(plsadi$ADI,plsadi$HRS_BRANCH, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=HRS_BRANCH))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='area deprivation index', y= 'hours open divided by braches')
+```
+
+
+```{r}
+#need to weight by number of branches
+# divide hours by central+branches
+notable <- plsadi %>%
+  filter(HRS_BRANCH > 4000)
+
+print(notable)
+```
+
+
+```{r population vs visits}
+cor.test(plsadi$POPU_LSA,plsadi$VISITS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=POPU_LSA, y=VISITS))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='population of service area', y= 'visits')
+```
+significant positive correlation
+```{r}
+#also maybe weight by branches
+highvisit <- plsadi %>%
+  filter(VISITS > 2000000)
+
+print(highvisit)
+```
+DPL and KDL are both huge pop and huge visits.. makes sense!
+
+```{r}
+plsadi$wifi_visit <- plsadi$WIFISESS/plsadi$VISITS
+
+cor.test(plsadi$ADI,plsadi$wifi_visit, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=wifi_visit))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'Wifi sessions')
+
+
+cor.test(plsadi$ADI,plsadi$WIFISESS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=WIFISESS))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'Wifi sessions')
+```
+```{r}
+cor.test(plsadi$ADI,plsadi$SALARIES, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=SALARIES))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'salary per employee')
+```
+
+```{r}
+plsadi$SALARY_EMP <- plsadi$SALARIES/plsadi$TOTSTAFF
+
+cor.test(plsadi$ADI,plsadi$SALARY_EMP, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=SALARY_EMP))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'salary per employee')
+```
+
+```{r}
+#bar graph of mea
+plot <- ggplot(fullset, aes(x=S8_31, y=ADI, group=S8_31))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Research health at library', y= 'adi')
+```
+People in areas with the highest adi researched at levels 3-4
+1 Never - I\\\'m not aware of this library service
+2 Never - I\\\'m aware of this service but haven\\\'t used it
+3 Once a year or less often
+4 Once every 6 months
+5 Once every 2-5 months
+6 Once a month
+7 Once every 2-3 weeks
+8 Once a week or more often
+
+```{r}
+#do bar grapgs with variace bars
+meanadi <- mean(fullset$ADI)
+plot <- ggplot(fullset, aes(x=Q9_2_4, y=ADI, group=Q9_2_4))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='First thing to cut in budget crisis- Public Health', y= 'adi')
+```
+
+
+```{r}
+plot <- ggplot(fullset, aes(x=Q9_2_5, y=ADI, group=Q9_2_5))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='First thing to cut in budget crisis- Public Library', y= 'adi')
+```
+
+```{r}
+plot <- ggplot(fullset, aes(x=Q14, y=ADI, group=Q14))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Importance of a strong public library system', y= 'adi')
+```
+```{r}
+cor.test(fullset$Q14, fullset$ADI, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(fullset, aes(x=Q14, y=ADI))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='Importance of a strong public library system', y= 'ADI')
+```
+```{r}
+#do bar graph of mean
+plot <- ggplot(fullset, aes(x=VISIT, y=Q1, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Visited in past year', y= 'Overall Impression Local Library')
+
+summary(fullset$Q1)
+```
+```{r}
+#add a cor test
+plot <- ggplot(fullset, aes(x=VISIT, y=s6_b, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Visited in past year', y= 's6_b I would be willing to pay more in taxes if it meant better funding for the local public library ')
+
+```
+```{r}
+#do percents
+#wtf fix it
+plot <- ggplot(fullset, aes(x=SS8, y=VISIT, group=SS8))+
+  geom_count(na.rm= TRUE)
+plot + labs(x='child', y= 'visit')
+```
+
+
+```{r}
+plot <- ggplot(fullset, aes(x=VISIT, y=s6_g, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Visited in past year', y= "s6_g I don't support tax increases that fund services I don't use or benefit from")
+```
+```{r}
+plot <- ggplot(fullset, aes(x=s6_b, y=TOTINCM, group=s6_b))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='s6_b I would be willing to pay more in taxes if it meant better funding for the local public library ', y= 'Total operating revenue')
+```
+```{r}
+plsadi$PERCENT_USRS <- plsadi$REGBOR/plsadi$POPU_LSA *100
+
+cor.test(plsadi$ADI,plsadi$PERCENT_USRS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=PERCENT_USRS))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'percent of population registered users')
+
+
+cor.test(plsadi$ADI,plsadi$REGBOR, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadi, aes(x=ADI, y=REGBOR))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='ADI', y= 'Registered users')
+```
+
+
+```{r}
+ggplot(fullset, aes(as.factor(VISIT), ..count..)) + 
+  geom_bar(aes(fill = as_factor(SS3)), position = "dodge")+
+  scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+  labs(x='Visited in past year', y= 'Count')+
+scale_fill_discrete(name = "Income", labels=c("1 Less than $20K", "2 $20K to $29K", "3 $30K to $39K", "4 $40K to $49K", "5 $50K to $59K", "6 $60K to $74K", "7 $75K to $99K", "8 $100K to $149K", "9 $150K or more"))
+```
+
+
