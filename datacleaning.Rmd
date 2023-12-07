@@ -47,6 +47,11 @@ sql <- 'SELECT *
 ```{r}
 subtable <- dbGetQuery(con, sql)
 ```
+```{r Create CSV of national table}
+ustable <- na.omit(subtable)
+write_excel_csv(ustable, file= "ustable.csv")
+```
+
 ```{r}
 #subsets table to contain MI zipcodes and remove NAs
 mitable <- subset(subtable, zipcode>=48001 & zipcode<= 49971)
@@ -62,7 +67,7 @@ ATF <- read_excel("~/Desktop/SURVMETH 727/Final project/2018_From_Awareness_to_F
 
 ```{r}
 #rename variables... I wont be using every variable but want to clean them in case I use this data again
-miatf <- ATF %>%
+ATF <- ATF %>%
   rename(SS1 = 'SS1 Gender',
          SS2 = 'SS2 Age', 
          SS3 = 'SS3 Income', 
@@ -412,26 +417,29 @@ Q21_Other = 'Q21_Other Primary Residence'
 ```
 
 ```{r}
-write_excel_csv(miatf, file = "clean.atf.csv")
+write_excel_csv(ATF, file = "clean.atf.csv")
+```
+
+```{r Select vars of interest}
+ATF <- select(ATF, c('WEIGHT',	'SS1', 'SS2', 'SS3', 'SS4', 'SS6', 'SS8', 'SS9', 's6_b', 's6_d', 's6_g', 's6_u', 's6_w', 's6_z', 's6_aa', 's6_gg', 's6_ll', 's6_nn', 'S6b1', 'VISIT', 'S8_31', 's9_p', 's10_t', 'Q1', 'Q2_4', 'Q2_12', 'Q2_13', 'Q2_14', 'Q2_26', 'Q4_17', 'Q4_18', 'Q9_1_4', 'Q9_1_5', 'Q9_2_4', 'Q9_2_5', 'Q9_3_4', 'Q9_3_5', 'Q14', 'Q16', 'Q18'))
 ```
 
 
 ```{r}
 #clean atf dataset to only include MI zip codes and variables of interest
-miatf <- subset(miatf, SS6>=48001 & SS6<= 49971)
-miatf <- select(miatf, c('WEIGHT',	'SS1', 'SS2', 'SS3', 'SS4', 'SS6', 'SS8', 'SS9', 's6_b', 's6_d', 's6_g', 's6_u', 's6_w', 's6_z', 's6_aa', 's6_gg', 's6_ll', 's6_nn', 'S6b1', 'VISIT', 'S8_31', 's9_p', 's10_t', 'Q1', 'Q2_4', 'Q2_12', 'Q2_13', 'Q2_14', 'Q2_26', 'Q4_17', 'Q4_18', 'Q9_1_4', 'Q9_1_5', 'Q9_2_4', 'Q9_2_5', 'Q9_3_4', 'Q9_3_5', 'Q14', 'Q16', 'Q18'))
+miatf <- subset(ATF, SS6>=48001 & SS6<= 49971)
 ```
 
 
-```{r}
-#Remove text from numeric data
+```{r Remove text from numeric data}
+#using same code for US/ MI data
+#miatfx <- miatf
 
-miatfx <- miatf
-
-#miatfclean <- data.frame(matrix(ncol = 39, nrow = 90))
+miatfx <- ATF
 
 cleantext <- function(miatfx){
   if(is.character(miatfx)) {
+   miatfx <- gsub('10 Agree Strongly', '10', miatfx)
    miatfx <- gsub('10 Agree Strongly', '10', miatfx)
     miatfx <- gsub('1 Disagree Strongly', '1', miatfx)
      miatfx <- gsub('10 Strongly Agree', '10', miatfx)
@@ -479,6 +487,7 @@ miatfx <- gsub('1 Doesn\\\'t describe them at all', '1', miatfx)
 miatfx <- gsub('10 An Excellent Library', '10', miatfx)
 miatfx <- gsub('10 Extremely Important', '10', miatfx)
 miatfx <- gsub('1 Not at all Important', '1', miatfx)
+miatfx <- gsub('1 Not at all important', '1', miatfx)
 
 miatfx <- gsub('1 Strongly favor', '1', miatfx)
 miatfx <- gsub('2 Somewhat favor', '2', miatfx)
@@ -520,6 +529,24 @@ miatfx$VISIT <- gsub('Y', '1', miatfx$VISIT)
 miatfx$VISIT <- gsub('N', '0', miatfx$VISIT)
 ```
 
+```{r}
+#remove Coresample (not using) add weight back to miatfclean
+miatfx$CoreSample <- NULL
+
+miatfx<- cbind(miatfx, ATF$WEIGHT)
+miatfx<- cbind(miatfx, ATF$SS6)
+
+#rename columns
+names(miatfx)[39] <- "WEIGHT"
+names(miatfx)[40] <- "ZIPCODE"
+
+#rename miatfx to usatf
+usatf <- miatfx
+```
+
+```{r}
+write_excel_csv(usatf, file = "usatf.csv")
+```
 
 ```{r}
 #remove Coresample (not using) add weight back to miatfclean
@@ -538,15 +565,23 @@ names(miatfx)[40] <- "ZIPCODE"
 write_excel_csv(miatfx, file = "use.miatf.csv")
 ```
 
+```{r Clean PLS data}
+PLS <- read.csv('~/Desktop/SURVMETH 727/Final project/pls_fy2018_data_files_csv 2/pls_fy18_ae_pud18i.csv')
 
-```{r}
+uspls <- select(PLS, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MASTER', 'LIBRARIA', 'OTHPAID', 'TOTSTAFF', 'LOCGVT', 'STGVT', 'FEDGVT', 'TOTINCM', 'SALARIES', 'TOTEXPCO', 'TOTOPEXP', 'CAP_REV', 'CAPITAL', 'HRS_OPEN', 'VISITS', 'REGBOR', 'TOTCIR', 'TOTCOLL', 'TOTPRO', 'TOTATTEN', 'PITUSR', 'WIFISESS', 'LONGITUD', 'LATITUDE', 'CNTYPOP'))
+
+write_excel_csv(uspls, file = "uspls.csv")
+
+```
+
+
+```{r Clean MI PLS data}
 PLS <- read.csv('~/Desktop/SURVMETH 727/Final project/pls_fy2018_data_files_csv 2/pls_fy18_ae_pud18i.csv')
 
 mipls <- subset(PLS, STABR == 'MI')
 mipls <- select(mipls, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MASTER', 'LIBRARIA', 'OTHPAID', 'TOTSTAFF', 'LOCGVT', 'STGVT', 'FEDGVT', 'TOTINCM', 'SALARIES', 'TOTEXPCO', 'TOTOPEXP', 'CAP_REV', 'CAPITAL', 'HRS_OPEN', 'VISITS', 'REGBOR', 'TOTCIR', 'TOTCOLL', 'TOTPRO', 'TOTATTEN', 'PITUSR', 'WIFISESS', 'LONGITUD', 'LATITUDE', 'CNTYPOP'))
 
 write_excel_csv(mipls, file = "use.mipls.csv")
-
 
 ```
 
