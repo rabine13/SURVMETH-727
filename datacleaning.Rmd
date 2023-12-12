@@ -68,7 +68,7 @@ ATF <- read_excel("~/Desktop/SURVMETH 727/Final project/2018_From_Awareness_to_F
 ```{r}
 #rename variables... I wont be using every variable but want to clean them in case I use this data again
 ATF <- ATF %>%
-  rename(SS1 = 'SS1 Gender',
+  rename(SS1 = 'SS1 Gender'),
          SS2 = 'SS2 Age', 
          SS3 = 'SS3 Income', 
          SS4 = 'SS4 Education',
@@ -519,6 +519,7 @@ miatfx <- gsub('5 Once every 2-5 months', '5', miatfx)
 miatfx <- gsub('6 Once a month', '6', miatfx)
 miatfx <- gsub('7 Once every 2-3 weeks', '7', miatfx)
 miatfx <- gsub('8 Once a week or more often', '8', miatfx)
+miatfx <- gsub('1 Unsatisfactory', '1', miatfx)
  } else {
  }}
 
@@ -568,7 +569,35 @@ write_excel_csv(miatfx, file = "use.miatf.csv")
 ```{r Clean PLS data}
 PLS <- read.csv('~/Desktop/SURVMETH 727/Final project/pls_fy2018_data_files_csv 2/pls_fy18_ae_pud18i.csv')
 
-uspls <- select(PLS, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MASTER', 'LIBRARIA', 'OTHPAID', 'TOTSTAFF', 'LOCGVT', 'STGVT', 'FEDGVT', 'TOTINCM', 'SALARIES', 'TOTEXPCO', 'TOTOPEXP', 'CAP_REV', 'CAPITAL', 'HRS_OPEN', 'VISITS', 'REGBOR', 'TOTCIR', 'TOTCOLL', 'TOTPRO', 'TOTATTEN', 'PITUSR', 'WIFISESS', 'LONGITUD', 'LATITUDE', 'CNTYPOP'))
+uspls <- select(PLS, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MASTER', 'LIBRARIA', 'OTHPAID', 'TOTSTAFF', 'LOCGVT', 'STGVT', 'FEDGVT', 'TOTINCM', 'SALARIES', 'TOTEXPCO', 'TOTOPEXP', 'CAP_REV', 'CAPITAL', 'HRS_OPEN', 'VISITS', 'REGBOR', 'TOTCIR', 'TOTCOLL', 'TOTPRO', 'TOTATTEN', 'PITUSR', 'WIFISESS', 'LONGITUD', 'LATITUDE', 'CNTYPOP', 'STABR'))
+
+#deal with missing
+uspls$POPU_LSA <- replace(uspls$POPU_LSA, uspls$POPU_LSA %in% c(-3, -9, -1), NA)
+uspls$CENTLIB <- replace(uspls$CENTLIB, uspls$CENTLIB %in% c(-3, -1), NA)
+uspls$BRANLIB <- replace(uspls$BRANLIB, uspls$BRANLIB %in% c(-3, -1), NA)
+uspls$MASTER <- replace(uspls$MASTER, uspls$MASTER %in% c(-3, -1), NA)
+uspls$LIBRARIA <- replace(uspls$LIBRARIA, uspls$LIBRARIA %in% c(-3, -1), NA)
+uspls$OTHPAID <- replace(uspls$OTHPAID, uspls$OTHPAID %in% c(-3, -1), NA)
+uspls$TOTSTAFF <- replace(uspls$TOTSTAFF, uspls$TOTSTAFF %in% c(-3, -1), NA)
+uspls$LOCGVT <- replace(uspls$LOCGVT, uspls$LOCGVT %in% c(-3, -1), NA)
+uspls$STGVT <- replace(uspls$STGVT, uspls$STGVT %in% c(-3, -1), NA)
+uspls$FEDGVT <- replace(uspls$FEDGVT, uspls$FEDGVT %in% c(-3, -1), NA)
+uspls$TOTINCM <- replace(uspls$TOTINCM, uspls$TOTINCM %in% c(-3, -1), NA)
+uspls$SALARIES <- replace(uspls$SALARIES, uspls$SALARIES %in% c(-3,-9, -1), NA)
+uspls$TOTEXPCO <- replace(uspls$TOTEXPCO, uspls$TOTEXPCO %in% c(-3, -1), NA)
+uspls$TOTOPEXP <- replace(uspls$TOTOPEXP, uspls$TOTOPEXP %in% c(-3, -1), NA)
+uspls$CAP_REV <- replace(uspls$CAP_REV, uspls$CAP_REV %in% c(-3, -1), NA)
+uspls$CAPITAL <- replace(uspls$CAPITAL, uspls$CAPITAL %in% c(-3, -1), NA)
+uspls$HRS_OPEN <- replace(uspls$HRS_OPEN, uspls$HRS_OPEN %in% c(-3, -1), NA)
+uspls$VISITS <- replace(uspls$VISITS, uspls$VISITS %in% c(-3,-1), NA)
+uspls$REGBOR <- replace(uspls$REGBOR, uspls$REGBOR %in% c(-3), NA)
+uspls$TOTCIR <- replace(uspls$TOTCIR, uspls$TOTCIR %in% c(-3, -1), NA)
+uspls$TOTCOLL <- replace(uspls$TOTCOLL, uspls$TOTCOLL %in% c(-3, -1), NA)
+uspls$TOTPRO <- replace(uspls$TOTPRO, uspls$TOTPRO %in% c(-3, -1), NA)
+uspls$TOTATTEN <- replace(uspls$TOTATTEN, uspls$TOTATTEN %in% c(-3, -1), NA)
+uspls$PITUSR <- replace(uspls$PITUSR, uspls$PITUSR %in% c(-3, -1), NA)
+uspls$WIFISESS <- replace(uspls$WIFISESS, uspls$WIFISESS %in% c(-3, -1), NA)
+uspls$CNTYPOP <- replace(uspls$CNTYPOP, uspls$CNTYPOP %in% c(-3, -1), NA)
 
 write_excel_csv(uspls, file = "uspls.csv")
 
@@ -584,4 +613,6 @@ mipls <- select(mipls, c('LIBNAME', 'ZIP', 'POPU_LSA', 'CENTLIB', 'BRANLIB', 'MA
 write_excel_csv(mipls, file = "use.mipls.csv")
 
 ```
+
+
 

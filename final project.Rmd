@@ -5,7 +5,7 @@ date: "2023-12-02"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
@@ -25,13 +25,31 @@ https://github.com/rabine13/SURVMETH-727
 
 
 ```{r}
-adi <- read_csv("~/Desktop/SURVMETH 727/Final project/mitable.csv")
-atf <- read_csv("~/Desktop/SURVMETH 727/Final project/use.miatf.csv")
-pls <- read_csv("~/Desktop/SURVMETH 727/Final project/use.mipls.csv")
+adi <- read_csv("~/Desktop/SURVMETH 727/Final project/ustable.csv")
+atf <- read_csv("~/Desktop/SURVMETH 727/Final project/usatf.csv")
+pls <- read_csv("~/Desktop/SURVMETH 727/Final project/uspls.csv")
 ```
+#Github link: https://github.com/rabine13/SURVMETH-727
+
+# The Question
+## Libraries are one of the few places that Americans can access resources for free.
+
+#The data
+## Data for this project comes from from three datasets. The first is the 2018 Area Deprivation Index, which I accessed from the Google Bigquery API. The area deprivation index is an evaluation of socioeconomic status compiled from multiple measures in the American Community Survey. This dataset contains an ADI measure for 32664 US zip codes.
+I also used data from the 2018 Public Libraries Survey, a national census of public libraries in the US and its territories. The survey is conducted by the Institute of Museum and Library Services. The survey is administered to central libraries, who report on all the branches in their system. This dataset, which I have called just pls, contains robust data about a library system's visitors, employment, revenue, use of materials, and more. This data is linked to the address of the central library in each system. This dataset covers 9261 central libraries. I was able to match  7642 to the ADI of their zipcode. 
+The last dataset is from a survey called Awareness to Funding: Voter Perceptions and Support of Public Libraries in 2018. The survey is conducted by OCLC and the American Library Association.
+This dataset covers 2914 individuals across the country and asks questions about their use of libraries, impression of them, and support of them.
+
+##finish description
 
 ```{r Final merge and clean}
+atf$Q1 <- gsub('1 Unsatisfactory', '1', atf$Q1)
+atf$Q1 <- as.numeric(atf$Q1)
 plsadi <- merge(pls, adi, by.x = "ZIP", by.y = "zipcode", all= FALSE)
+plsatf <- merge(pls, atf, by.x = "ZIP", by.y = "ZIPCODE", all = FALSE)
+atfadi <- merge(atf, adi, by.x = "ZIPCODE", by.y = "zipcode", all = FALSE)
+
+
 fullset <- merge(plsadi, atf, by.x = "ZIP", by.y = "ZIPCODE", all = FALSE)
 
 #remove geo_id, description, year
@@ -40,21 +58,81 @@ fullset$geo_id <- NULL
 fullset$description <- NULL
 fullset$year <- NULL
 
-names(plsadi)[34] <- 'ADI'
-names(fullset)[31] <- 'ADI'
+names(plsadi)[35] <- 'ADI'
+names(fullset)[32] <- 'ADI'
+names(atfadi)[44] <- 'ADI'
 
 ```
 
+##I merged the data into 4 different datasets to get the most possible cases when comparing different variables. The datasets are as follows:
+fullset: contains 819 cases matching public library survey, ADI, and awareness to funding data
+plsadi: contains 7642 cases matching public library data with the ADI of the cental library's zipcode. Used for comparitive measures of ADI with library hours, visitors, 
+
+#Mapping the libraries
+I was unable to retrieve map data for Alaska, Hawaii, American Samoa, Northern Mariana Islands, Guam, Puerto Rico, and US Virgin Islands so they have been excluded from this map. 
+
+The purple points on the map represent central libraries that were matched to both their ADI and an individual's ATF responses.
+The green points on the map represent central libraries that were matched only to ADI.
+The blue points on the map represent libraries in the PLS dataset that were not matched to the other datasets.
+```{r Map comparing libraries in the full dataset and the ATF dataset}
+all_states <- map_data("state")
+```
+
+```{r Map comparing libraries in the full dataset and the ATF dataset}
+#remove Alaska and Hawaii 
+pls_continent <- filter(pls, !(STABR %in% c('AK', 'HI', 'AS', 'MP', 'GU', 'PR', 'VI')))
+plsadi_continent <- filter(plsadi, !(STABR %in% c('AK', 'HI', 'AS', 'MP', 'GU', 'PR', 'VI')))
+fullset_contient <- filter(fullset, !(STABR %in% c('AK', 'HI', 'AS', 'MP', 'GU', 'PR', 'VI')))
+usmap <- ggplot()+
+  geom_polygon(data = all_states, aes(x=long, y=lat, group = group), fill = "grey", color = "black") + 
+   geom_point(data = pls_continent, aes(x=LONGITUD, y=LATITUDE), color = "blue") +
+  geom_point(data = plsadi_continent, aes(x=LONGITUD, y=LATITUDE), color = "darkgreen") + 
+  geom_point(data = fullset_contient, aes(x= LONGITUD, y= LATITUDE), color = "purple") 
+usmap
+ # ggsave("usmap.png", device = "png", width = 5, height = 5)
+```
+
+
+#Exploration
+
+First, I wanted to look for a correlation between population of a library's service area and the visits per year. I used just the PLS data since merging with other datasets reduced the number of cases.
+```{r population vs visits}
+cor.test(pls$POPU_LSA,pls$VISITS, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(pls, aes(x=POPU_LSA, y=VISITS))+
+  geom_point(color = "darkgreen", na.rm= TRUE)+ 
+  labs(x='Population of Service Area', y= 'visits', title = "Visits by Population of Service Area")
+plot
+ggsave("plot.png", device = "png", width = 8, height = 5)
+```
+There is a significant positive correlation, which is pretty intuitive.
+
+
+significant positive correlation
+```{r}
+#also maybe weight by branches
+highvisit <- plsadi %>%
+  filter(VISITS > 5000000)
+
+print(highvisit)
+```
+
+I next wanted to examine if library visitorship has a correlation with ADI. I expected that there would be a negative correlation, that libraries in areas with higher ADI (worse socioeconomic status) would have more visitors.
 ```{r Visits vs ADI}
-cor.test(plsadi$ADI,plsadi$VISITS, 
+cor.test(plsadi$ADI, plsadi$VISITS, 
          alternative="greater", 
          method= "pearson")
 
 plot <- ggplot(plsadi, aes(x=ADI, y=VISITS))+
   geom_point(na.rm= TRUE)
 plot + labs(x='area deprivation index', y= 'visits')
+```
+There is a slight negative correlation but it is not significant and could be by chance.
+I decided to see if there was a difference if I looked at the percent of population that had visited.
 
-#with percent of pop that has visited
+```{r percent Visits vs ADI}
 plsadi$PERCENT_VISIT <- (plsadi$VISITS/plsadi$POPU_LSA)*100
 
 cor.test(plsadi$ADI,plsadi$PERCENT_VISIT, 
@@ -63,32 +141,37 @@ cor.test(plsadi$ADI,plsadi$PERCENT_VISIT,
 
 plot <- ggplot(plsadi, aes(x=ADI, y=PERCENT_VISIT))+
   geom_point(na.rm= TRUE)
-plot + labs(x='area deprivation index', y= 'percent that visited')
-
-#something is up with the VISITS variable... why so many visits!!
+plot + labs(x='area deprivation index', y= 'percent of population that visited')
 ```
-There is no significant correlation between ADI and visits for libraries surveyed in the Public Library Survey
+I noticed three outliers that seemed to have a very low population but high number of visits;
+The Lake Minchumina Community Library with a service area population of 9 and 2071 visits in 2018
+The Adams-Pratt Oakland County Law Library with a service area population of 19 and 28700 visits in 2018
+The Round Top Family Library with a service area population of 91 and 24531 visits in 2018.
+I could find no clear reason for the discrepancy so I did the test with these outliers removed.
+```{r percent Visits vs ADI}
+plsadiclean <- plsadi[-c(7623,2843, 6536),]
+plsadiclean$PERCENT_VISIT <- (plsadiclean$VISITS/plsadiclean$POPU_LSA)*100
 
-```{r whether sample member had visited vs adi of their zip}
-plot <- ggplot(fullset, aes(x=VISIT, y=ADI, group=VISIT))+
-  geom_boxplot(na.rm= TRUE)
-plot + labs(x='visits', y= 'adi')
+cor.test(plsadiclean$ADI,plsadiclean$PERCENT_VISIT, 
+         alternative="greater", 
+         method= "pearson")
+
+plot <- ggplot(plsadiclean, aes(x=ADI, y=PERCENT_VISIT))+
+  geom_point(na.rm= TRUE)
+plot + labs(x='area deprivation index', y= 'percent of population that visited')
 ```
-among sample members of the awareness to funding sample who had visited a library in the past year. ...
+There still is no significant correlation, but the distribution looks much better.
 
 
-```{r Visits vs funding priority}
-#do something similar to above but comparing whether they have visited with their willingness to fund
-plot <- ggplot(fullset, aes(x=VISIT, y=Q9_1_5, group=VISIT))+
-  geom_boxplot(na.rm= TRUE)
-plot + labs(x='has visited in past year', y= 'Q9_1_5 Top priority allocating tax dollars - Public Library')
+There were much more visitors than non-visitors in the atf data
+```{r Number of non visitors and visitors in the ATF data}
+count(atf, vars = 'VISIT')
 ```
+###look at later
 
-
-
-
+#need to weight by number of branches
+# divide hours by central+branches
 ```{r Hours library is open compared to ADI of its zipcode}
-
 plsadi$HRS_BRANCH <- plsadi$HRS_OPEN/(plsadi$CENTLIB+plsadi$BRANLIB)
 
 
@@ -103,33 +186,41 @@ plot + labs(x='area deprivation index', y= 'hours open divided by braches')
 
 
 ```{r}
-#need to weight by number of branches
-# divide hours by central+branches
+
 notable <- plsadi %>%
-  filter(HRS_BRANCH > 4000)
+  filter(HRS_BRANCH > 6000)
 
 print(notable)
 ```
 
-
-```{r population vs visits}
-cor.test(plsadi$POPU_LSA,plsadi$VISITS, 
-         alternative="greater", 
-         method= "pearson")
-
-plot <- ggplot(plsadi, aes(x=POPU_LSA, y=VISITS))+
-  geom_point(na.rm= TRUE)
-plot + labs(x='population of service area', y= 'visits')
+```{r whether sample member had visited vs adi of their zip}
+plot <- ggplot(atfadi, aes(x=VISIT, y=ADI, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='visits', y= 'adi')
 ```
-significant positive correlation
-```{r}
-#also maybe weight by branches
-highvisit <- plsadi %>%
-  filter(VISITS > 2000000)
+Comparing the ADI of sample members who reported visiting their library and those who did not, we see that those who visited tended to have a slightly higher ADI. 
 
-print(highvisit)
+Next I compared whether a respondent had visited their library in the past year with their response to a likert scale asking if the public library should be a high priority for allocating tax dollars.
+I used just the ATF data for this analysis to use the most possible cases.
+```{r Visits vs funding priority}
+plot <- ggplot(atf, aes(x=VISIT, y=Q9_1_5, group=VISIT))+
+  geom_boxplot(na.rm= TRUE)+
+ labs(x='Visited in past year', y= 'Q9_1_5 Top priority allocating tax dollars - Public Library') +
+  scale_y_continuous(breaks=seq(1, 10, by=1))
+plot
+
+#tax <- ggplot(atf, aes(as.factor(VISIT))) + 
+  #geom_bar(aes(fill = as.factor(Q9_1_5)))+
+ # scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+ # labs(x='Visited in past year', y= 'Count')+
+#scale_fill_brewer(palette = "PRGn",name = "Top priority allocating tax dollars - Public Library", labels=c("1 Strongly Disagree", "2", "3", "4", "5", "6", "7", "8", "9", "10 Strongly Agree"))
+
+#print(tax)
+#ggsave("tax.png", device = "png", width = 8, height = 5)
 ```
-DPL and KDL are both huge pop and huge visits.. makes sense!
+Those who have visited are more supportive of allocating tax dollars to the public library. The mean for visitors is 2 points higher on the scale than for non visitors.
+
+
 
 ```{r}
 plsadi$wifi_visit <- plsadi$WIFISESS/plsadi$VISITS
@@ -151,6 +242,9 @@ plot <- ggplot(plsadi, aes(x=ADI, y=WIFISESS))+
   geom_point(na.rm= TRUE)
 plot + labs(x='ADI', y= 'Wifi sessions')
 ```
+There is a very small but significant positive positive correlation between ADI and wifi uses per visit. Meaning, as ADI increases, the number of people who use the wifi during their visit increases. One possible explanation is that people in people in more deprived areas are going to the library to use the wifi because they do not have access at home. This is expected, but I am surprised the correlation was not stronger. 
+
+
 ```{r}
 cor.test(plsadi$ADI,plsadi$SALARIES, 
          alternative="greater", 
@@ -158,7 +252,7 @@ cor.test(plsadi$ADI,plsadi$SALARIES,
 
 plot <- ggplot(plsadi, aes(x=ADI, y=SALARIES))+
   geom_point(na.rm= TRUE)
-plot + labs(x='ADI', y= 'salary per employee')
+plot + labs(x='ADI', y= 'Salary per employee')
 ```
 
 ```{r}
@@ -175,7 +269,7 @@ plot + labs(x='ADI', y= 'salary per employee')
 
 ```{r}
 #bar graph of mea
-plot <- ggplot(fullset, aes(x=S8_31, y=ADI, group=S8_31))+
+plot <- ggplot(atfadi, aes(x=S8_31, y=ADI, group=S8_31))+
   geom_boxplot(na.rm= TRUE)
 plot + labs(x='Research health at library', y= 'adi')
 ```
@@ -191,41 +285,36 @@ People in areas with the highest adi researched at levels 3-4
 
 ```{r}
 #do bar grapgs with variace bars
-meanadi <- mean(fullset$ADI)
-plot <- ggplot(fullset, aes(x=Q9_2_4, y=ADI, group=Q9_2_4))+
+
+plot <- ggplot(atfadi, aes(x=Q9_2_4, y=ADI, group=Q9_2_4))+
   geom_boxplot(na.rm= TRUE)
 plot + labs(x='First thing to cut in budget crisis- Public Health', y= 'adi')
 ```
 
-
 ```{r}
-plot <- ggplot(fullset, aes(x=Q9_2_5, y=ADI, group=Q9_2_5))+
+plot <- ggplot(atfadi, aes(x=Q9_2_5, y=ADI, group=Q9_2_5))+
   geom_boxplot(na.rm= TRUE)
 plot + labs(x='First thing to cut in budget crisis- Public Library', y= 'adi')
 ```
 
 ```{r}
-plot <- ggplot(fullset, aes(x=Q14, y=ADI, group=Q14))+
-  geom_boxplot(na.rm= TRUE)
-plot + labs(x='Importance of a strong public library system', y= 'adi')
-```
-```{r}
-cor.test(fullset$Q14, fullset$ADI, 
+cor.test(atfadi$Q14, atfadi$ADI, 
          alternative="greater", 
          method= "pearson")
 
-plot <- ggplot(fullset, aes(x=Q14, y=ADI))+
-  geom_point(na.rm= TRUE)
-plot + labs(x='Importance of a strong public library system', y= 'ADI')
+plot <- ggplot(atfadi, aes(x=Q14, y=ADI, group = Q14))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='Importance of a strong public library system', y= 'adi')
 ```
+
+
 ```{r}
-#do bar graph of mean
-plot <- ggplot(fullset, aes(x=VISIT, y=Q1, group=VISIT))+
+plot <- ggplot(atf, aes(x=VISIT, y=Q1, group=VISIT))+
   geom_boxplot(na.rm= TRUE)
 plot + labs(x='Visited in past year', y= 'Overall Impression Local Library')
 
-summary(fullset$Q1)
 ```
+
 ```{r}
 #add a cor test
 plot <- ggplot(fullset, aes(x=VISIT, y=s6_b, group=VISIT))+
@@ -234,16 +323,16 @@ plot + labs(x='Visited in past year', y= 's6_b I would be willing to pay more in
 
 ```
 ```{r}
-#do percents
-#wtf fix it
-plot <- ggplot(fullset, aes(x=SS8, y=VISIT, group=SS8))+
-  geom_count(na.rm= TRUE)
-plot + labs(x='child', y= 'visit')
+ggplot(atf, aes(as.factor(VISIT))) + 
+  geom_bar(aes(fill = as_factor(SS8)), position = "dodge")+
+  scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
+  labs(x='Visited in past year', y= 'Count')+
+scale_fill_discrete(name = "Has children", labels=c("No", "Yes"))
 ```
 
 
 ```{r}
-plot <- ggplot(fullset, aes(x=VISIT, y=s6_g, group=VISIT))+
+plot <- ggplot(atf, aes(x=VISIT, y=s6_g, group=VISIT))+
   geom_boxplot(na.rm= TRUE)
 plot + labs(x='Visited in past year', y= "s6_g I don't support tax increases that fund services I don't use or benefit from")
 ```
@@ -252,6 +341,7 @@ plot <- ggplot(fullset, aes(x=s6_b, y=TOTINCM, group=s6_b))+
   geom_point(na.rm= TRUE)
 plot + labs(x='s6_b I would be willing to pay more in taxes if it meant better funding for the local public library ', y= 'Total operating revenue')
 ```
+
 ```{r}
 plsadi$PERCENT_USRS <- plsadi$REGBOR/plsadi$POPU_LSA *100
 
@@ -275,11 +365,14 @@ plot + labs(x='ADI', y= 'Registered users')
 
 
 ```{r}
-ggplot(fullset, aes(as.factor(VISIT), ..count..)) + 
+ggplot(atf, aes(as.factor(VISIT))) + 
   geom_bar(aes(fill = as_factor(SS3)), position = "dodge")+
   scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
   labs(x='Visited in past year', y= 'Count')+
 scale_fill_discrete(name = "Income", labels=c("1 Less than $20K", "2 $20K to $29K", "3 $30K to $39K", "4 $40K to $49K", "5 $50K to $59K", "6 $60K to $74K", "7 $75K to $99K", "8 $100K to $149K", "9 $150K or more"))
 ```
+# Limitations
+## We are only looking at the zip code of the cental branch
 
-
+#Citations
+Pelczar, M., Frehill, L. M., Nielsen, E., & Li, J. (2020). Data File Documentation: Public Libraries in the United States Fiscal Year 2018. Institute of Museum and Library Services: Washington, D.C.
