@@ -11,7 +11,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
 
 ```{r}
@@ -36,15 +36,13 @@ atf <- read_csv("~/Desktop/SURVMETH 727/Final project/usatf.csv")
 pls <- read_csv("~/Desktop/SURVMETH 727/Final project/uspls.csv")
 ```
 
-#Github link: <https://github.com/rabine13/SURVMETH-727>
-
 # The Question
 
 ## Across the US, libraries are one of the few places that offer their space and resources to the public for free. This project seeks to examine the differences in how libraries are seen and used by theur communities. Given that it is easier than ever to access information from the internet, are libraries still seen as an important hub of knowledge? Do people from different socioeconomic backgrounds view their library differently?
 
-# The data
+# The Data
 
-## Data for this project comes from from three datasets. The first is the 2018 Area Deprivation Index, which I accessed from the Google Bigquery API. The Area Deprivation Index (ADI) is an evaluation of socioeconomic status compiled from multiple measures in the American Community Survey. This dataset contains an ADI measure for 32664 US zip codes.
+## Data for this project comes from from three datasets. The first is the 2018 Area Deprivation Index, which I accessed from the Google Bigquery API. The Area Deprivation Index (ADI) is an evaluation of socioeconomic status compiled from multiple measures in the American Community Survey. I was unable to find a definitive explaination of how the index is created. This dataset contains an ADI measure for 32664 US zip codes.
 
 ## Next is the 2018 Public Libraries Survey, a national census of public libraries in the US and its territories. The survey is conducted by the Institute of Museum and Library Services. The survey is administered to central libraries, who report on all the branches in their system. This dataset (pls) contains robust data about a library system's visitors, employment, revenue, use of materials, and more. This data is linked to the address of the central library in each system. This dataset covers 9261 central libraries. I was able to match 7642 to the ADI of their zipcode.
 
@@ -82,11 +80,13 @@ names(atfadi)[44] <- 'ADI'
 
 ```
 
+\newpage
+
 # Mapping the libraries
 
 ## The purple points on the map represent central libraries that were matched to both their ADI and an individual's ATF responses.
 
-## The "green" points on the map represent central libraries that were matched only to ADI.
+## The green points on the map represent central libraries that were matched only to ADI.
 
 ## The blue points on the map represent libraries in the PLS dataset that were not matched to the other datasets.
 
@@ -112,12 +112,15 @@ usmap
  # ggsave("usmap.png", device = "png", width = 5, height = 5)
 ```
 
+\newpage
+
 # Exploration
 
 First, I wanted to look for a correlation between population of a
 library's service area and the visits per year. This analysis uses just
 the PLS data since merging with other datasets reduced the number of
-cases.
+cases. There is a large variation in the sizes of library systems in
+this dataset.
 
 ```{r population vs visits}
 plot <- ggplot(pls, aes(x=POPU_LSA, y=VISITS))+
@@ -142,7 +145,9 @@ highvisit <- plsadi %>%
 I next wanted to examine if library visitorship has a correlation with
 ADI. I expected that there would be a positive correlation, that
 libraries in areas with higher ADI (worse socioeconomic status) would
-have more visitors. This analysis uses the ADI and PLS datasets.
+have more visitors. The expectation being that people with less access
+to internet, education systems, and learning resources might go to the
+library more to make use of their public resources.
 
 ```{r Visits vs ADI}
 plot <- ggplot(plsadi, aes(x=ADI, y=VISITS))+
@@ -173,11 +178,14 @@ cor.test(plsadi$ADI,plsadi$PERCENT_VISIT,
 I noticed three outliers that seemed to have a very low population but
 high number of visits:
 
-The Lake Minchumina Community Library with a service area population of
-9 and 2071 visits in 2018. The Adams-Pratt Oakland County Law Library
-with a service area population of 19 and 28700 visits in 2018. The Round
-Top Family Library with a service area population of 91 and 24531 visits
-in 2018.
+-   The Lake Minchumina Community Library with a service area population
+    of 9 and 2071 visits in 2018.
+
+-   The Adams-Pratt Oakland County Law Library with a service area
+    population of 19 and 28700 visits in 2018.
+
+-   The Round Top Family Library with a service area population of 91
+    and 24531 visits in 2018.
 
 I could find no clear reason for the discrepancy so I did the test with
 these outliers removed.
@@ -197,9 +205,9 @@ cor.test(plsadiclean$ADI,plsadiclean$PERCENT_VISIT,
 ```
 
 There still is no significant correlation, but the distribution looks
-much better.
-
-Next, I looked at the hours each branch is open, compared to ADI.
+much better. \pagebreak Next, I looked at the hours each branch is open,
+compared to ADI. I removed problem cases where there were zero branch or
+central libraries reported.
 
 ```{r Hours library is open compared to ADI of its zipcode}
 plsadi$HRS_BRANCH <- plsadi$HRS_OPEN/(plsadi$CENTLIB+plsadi$BRANLIB)
@@ -217,6 +225,8 @@ cor.test(plsadiclean$ADI, plsadiclean$HRS_BRANCH,
 ```
 
 There is no significant correlation.
+
+\pagebreak
 
 I next compared the hours each branch is open with the population they
 serve.
@@ -243,7 +253,11 @@ notable <- plsadi %>%
 There is a weak but significant positive correlation.
 
 Finally, I decided to see if the registered library users correlated
-with ADI.
+with ADI, again expecting more users in higher ADI areas. One issue I
+anticipated with this measure is that registered users may not actually
+capture all library users. Most libraries require a mailing address when
+registering. This may exclude unhoused people from the registration
+data, even if they visit their library regularly.
 
 ```{r}
 plot <- ggplot(plsadi, aes(x=ADI, y=REGBOR))+
@@ -269,12 +283,16 @@ cor.test(plsadi$ADI,plsadi$PERCENT_USRS,
 ```
 
 There is no significant correlation with the number of registered users
-or the percent that are registered users. The percent of population that
-are registered users is frequently over 100%. My assumption is that
-these libraries have not removed registrations for people who have moved
-or passed away, leading to this overestimation.
+or the percent that are registered users. There was one unanticipated
+issue with this analysis; the percent of population that are registered
+users is frequently over 100%. My assumption is that these libraries
+have not removed registrations for people who have moved or passed away,
+leading to this overestimation.
 
-Next, we look at wifi use and ADI
+\pagebreak
+
+Next, we look at wifi use and ADI. I expect that there will be a
+positive correlation, more people using the wifi in more deprived areas.
 
 ```{r}
 plot <- ggplot(plsadi, aes(x=ADI, y=WIFISESS))+
@@ -337,7 +355,10 @@ cor.test(plsadiclean$ADI,plsadiclean$wifi_visit,
 ```
 
 Having removed this outlier, the correlation between ADI and Wifi
-sessions per visit is slightly larger and more statistically significant
+sessions per visit is slightly larger and more statistically
+significant.
+
+\pagebreak
 
 I also wanted to look at the relationship between staff salaries and
 ADI. I expected that libraries in areas with higher ADI would pay their
@@ -357,6 +378,8 @@ cor.test(plsadiclean$ADI,plsadiclean$SALARIES,
 
 Looking at the total staff expenditures, there is no significant
 correlation.
+
+\pagebreak
 
 Next I divided the total staff expenditures by the number of staff
 members to get an average salary per employee. I removed cases that were
@@ -378,6 +401,8 @@ cor.test(plsadiclean$ADI,plsadiclean$SALARY_EMP,
 
 There is no significant correlation
 
+\pagebreak
+
 # Visitors and non visitors
 
 There were much more library visitors than non-visitors in the ATF data
@@ -386,8 +411,9 @@ There were much more library visitors than non-visitors in the ATF data
 count(atf, vars = 'VISIT')
 ```
 
-734 did not visit a library in the past year 2179 did visit a library in
-the past year
+734 did not visit a library in the past year
+
+2179 did visit a library in the past year
 
 Looking at the main topic of this report, I was curious if visitorship
 varied by ADI.
@@ -405,8 +431,8 @@ Comparing the ADI of sample members who reported visiting their library
 and those who did not, we see that those who visited tended to live in
 areas with a slightly higher ADI.
 
-
-Despite this, the pattern of incomes for visitors and non-visitors was roughly the same, as shown below:
+Despite this, the pattern of incomes for visitors and non-visitors was
+roughly the same, as shown below:
 
 ```{r}
 ggplot(atf, aes(as.factor(VISIT))) + 
@@ -415,7 +441,12 @@ ggplot(atf, aes(as.factor(VISIT))) +
   labs(x='Visited in Past Year', y= 'Count', title = "Income of ATF Sample Members", caption = "Dataset: atf")+
 scale_fill_discrete(name = "Income", labels=c("1 Less than $20K", "2 $20K to $29K", "3 $30K to $39K", "4 $40K to $49K", "5 $50K to $59K", "6 $60K to $74K", "7 $75K to $99K", "8 $100K to $149K", "9 $150K or more"))
 ```
-Next, I wanted to see if the income of individuals in the sample was representative of their area. As shown below, sample members with high income were on average from higher ADI (more deprived) areas. Based on this, it is important to note these sample members may not be representative of other people in their area. 
+
+Next, I wanted to see if the income of individuals in the sample was
+representative of their area. As shown below, sample members with high
+income were on average from higher ADI (more deprived) areas. Based on
+this, it is important to note these sample members may not be
+representative of other people in their area.
 
 ```{r}
 
@@ -433,9 +464,7 @@ plot <- ggplot(atfadi, aes(x=as.factor(SS3), y=ADI, group=S8_31))+
 plot
 ```
 
-
-I used just the ATF data for the following analyses to use the most
-possible cases.
+\pagebreak
 
 Visitors tended to have a better impression of their library than
 non-visitors.
@@ -449,19 +478,11 @@ plot <- ggplot(atf, aes(x=as.factor(VISIT), y=as.factor(Q1), group=VISIT))+
 plot
 
 ```
-## fix labels here
 
-```{r}
-ggplot(atf, aes(as.factor(VISIT))) + 
-  geom_bar(aes(fill = as_factor(SS8)), position = "dodge")+
-  scale_x_discrete(labels = c("0"="No", "1"="Yes"))+
-  labs(x='Visited in past year', y= 'Count')+
-scale_fill_discrete(name = "Has children", labels=c("No", "Yes"))
-```
-
-Next I compared whether a respondent had visited their library in the
-past year with their response to a likert scale asking if the public
-library should be a high priority for allocating tax dollars.
+I was curious if this positive impression translated to material support
+of their library, so I compared whether a respondent had visited their
+library in the past year with their response to a likert scale asking if
+the public library should be a high priority for allocating tax dollars.
 
 ```{r Visits vs funding priority}
 plot <- ggplot(atf, aes(x=as.factor(VISIT), y=as.factor(Q9_1_5), group=VISIT))+
@@ -485,78 +506,80 @@ Those who have visited are much more supportive of allocating tax
 dollars to the public library. The mean for visitors is 2 points higher
 on the scale than for non visitors.
 
+Those who have visited were also more supportive of increased taxes to
+better fund their library.
+
 ```{r}
 #add a cor test
 plot <- ggplot(fullset, aes(x=as.factor(VISIT), y=as.factor(s6_b), group=VISIT))+
   geom_boxplot(na.rm= TRUE)+
   labs(x='Visited in past year', y= 'I would be willing to pay more in taxes if it meant 
-       better funding for the local public library ')+
+       better funding for the local public library ',caption = "Dataset: fullset")+
   scale_x_discrete(labels = c("0" ="No", "1"="Yes"))+
   scale_y_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly Agree"))
 plot
 
 ```
 
-In spite of this result, there was a surprising response to the
-following question
-
 ```{r}
 plot <- ggplot(atf, aes(x=as.factor(VISIT), y=as.factor(s6_g), group=VISIT))+
   geom_boxplot(na.rm= TRUE)+
   labs(x='Visited in past year', y= "I don't support tax increases that fund services
-       I don't use or benefit from")+
+       I don't use or benefit from",caption = "Dataset: atf")+
     scale_x_discrete(labels = c("0" ="No", "1"="Yes"))+
   scale_y_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly Agree"))
 plot
 ```
 
-I next compared these impressions from the ATF data to the ADI.
+There were neutral responses from both visitors and non-visitors to the
+statement "I don't support tax increases that fund services I don't use
+or benefit from." This statement is vague, so it is hard to draw a
+meaningful conclusion about library support.
 
-People in areas with higher ADI tend to have worse health outcomes on
-the whole due to lack of access to resources. I was curious if people in
-these areas used the library to research health topics more than their
-low ADI counterparts. Researching at the library may offer an
-alternative way to access health information.
+\pagebreak
+
+I expected there would be a correlation between people's willingness to
+fund their library and the library's revenue, but there was not.
 
 ```{r}
-#bar graph of mea
-plot <- ggplot(atfadi, aes(x=as.factor(S8_31), y=ADI, group=S8_31))+
-  geom_boxplot(na.rm= TRUE)+
-  labs(x='Research health at library', y= 'Area Deprivation Index')+
- scale_x_discrete(labels = c('1'= '1', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10"))
-plot
+plot <- ggplot(plsatf, aes(x=as.factor(s6_b), y=TOTINCM, group=s6_b))+
+  geom_boxplot(na.rm= TRUE)
+plot + labs(x='I would be willing to pay more in taxes if it meant better 
+            funding for the local public library ', y= 'Total operating revenue', caption = "Dataset: plsatf", title = "Willingness to Fund and Revenue")+
+  scale_x_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly 
+    Agree"))
+
+cor.test(plsatf$s6_b, plsatf$TOTINCM, 
+         alternative="greater", 
+         method= "pearson")
 ```
 
-People in areas with the highest adi researched at levels 3-4 Never -
-not aware 
-
-2 Never - I\\'m aware of this service but haven\\'t used it 3
-Once a year or less often 4 Once every 6 months 5 Once every 2-5 months
-6 Once a month 7 Once every 2-3 weeks 8 Once a week or more often
+I also expected a correlation between people's impression of their
+library and its income, but found no significant correlation. This could
+be good news, showing that even poorly funded libraries can rally the
+support of their communities.
 
 ```{r}
-#do bar grapgs with variace bars
-
-plot <- ggplot(atfadi, aes(x=as.factor(Q9_2_4), y=ADI, group=Q9_2_4))+
-  geom_boxplot(na.rm= TRUE) +
-  labs(x='First thing to cut in budget crisis- Public Health', y= 'Area Deprivation Index') +
-    scale_x_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly Agree"))
+plot <- ggplot(plsatf, aes(x=as.factor(Q1), y=TOTINCM, group=Q1))+
+  geom_boxplot(na.rm= TRUE)+ 
+  labs(x='Overall Impression Public Library', y= 'Total operating revenue', caption = "Dataset: plsatf", title = "Impression By Revenue")+
+  scale_x_discrete(labels = c('1'= '1 Unsatisfactory', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 An 
+    Excellent 
+    Library"))
 plot
+
+cor.test(plsatf$Q1, plsatf$TOTINCM, 
+         alternative="greater", 
+         method= "pearson")
 ```
 
 ```{r}
-plot <- ggplot(atfadi, aes(x=as.factor(Q9_2_5), y=ADI, group=Q9_2_5))+
-  geom_boxplot(na.rm= TRUE) +
-  labs(x='First thing to cut in budget crisis- Public Library', y= 'Area Deprivation Index')+
-    scale_x_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly Agree"))
-plot
-```
-## move this one up
-
-```{r}
-plot <- ggplot(atfadi, aes(x=Q14, y=ADI, group = Q14))+
+plot <- ggplot(atfadi, aes(x=as.factor(Q14), y=ADI, group = Q14))+
   geom_boxplot(na.rm= TRUE) + 
-  labs(x='Importance of a strong public library system', y= 'Area Deprivation Index')+         scale_x_continuous(breaks=seq(1, 10, by=1))
+  labs(x='Importance of a strong public library system', y= 'Area Deprivation Index', caption = "Dataset: atfadi")+         scale_x_discrete(labels = c('1'= '1 Not at 
+      all Important', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Extremely 
+  Important"))
+  
 plot
 
 cor.test(atfadi$Q14, atfadi$ADI, 
@@ -564,35 +587,117 @@ cor.test(atfadi$Q14, atfadi$ADI,
          method= "pearson")
 ```
 
+There is a small positive correlation between ADI and belief in the
+importance of a strong public library system. Those who said a strong
+library system was not important lived in lower ADI areas on average.
+Perhaps those who live in these areas believe it is not important
+because they and their neighbors can afford to access resources in
+another way.
+
+People in areas with higher ADI tend to have worse health outcomes on
+the whole due to low socioeconomic status and lack of access to
+healthcare. I was curious if people in these areas used the library to
+research health topics more than their low ADI counterparts. Researching
+at the library may offer an alternative way to access health
+information.
+
 ```{r}
-#revenue per branch
-plot <- ggplot(plsatf, aes(x=as.factor(s6_b), y=TOTINCM, group=s6_b))+
-  geom_boxplot(na.rm= TRUE)
-plot + labs(x='s6_b I would be willing to pay more in taxes if it meant better funding for the local public library ', y= 'Total operating revenue')
+
+plot <- ggplot(atfadi, aes(x=as.factor(S8_31), y=ADI, group=S8_31))+
+  geom_boxplot(na.rm= TRUE)+
+  labs(x='Research health at library', y= 'Area Deprivation Index', title = "ADI by Frequecy of Health Research", caption = "Dataset: atfadi")+
+ scale_x_discrete(labels = c('1'= 'Never- 
+    not aware of 
+    service', '2'='Never', '3'='< Once a 
+    year', '4'='Every 6 
+    months', "5"= 'Every 2-5
+    months', "6"='Once a 
+    month', "7"='Every 2-3 
+    weeks', "8"='Once a week
+    or more'))
+plot
+```
+
+Those who researched their health at the library the most often tended
+to live in areas with higher ADI, again indicating people in these areas
+may be more likely to turn to their library for resources they may not
+be able to access elsewhere.
+
+\pagebreak
+
+Surprisingly, those in higher ADI areas were slightly more supportive of
+cutting public health and public library funding in a budget crisis, but
+neither correlation is significant.
+
+```{r}
+plot <- ggplot(atfadi, aes(x=as.factor(Q9_2_4), y=ADI, group=Q9_2_4))+
+  geom_boxplot(na.rm= TRUE) +
+  labs(x='First thing to cut in budget crisis- Public Health', y= 'Area Deprivation Index', title = "Willingness to Cut Public Health Funding by ADI", caption = "Dataset: atfadi") +
+    scale_x_discrete(labels = c('1'= '1 Strongly
+    Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly 
+   Agree"))
+plot
+
+cor.test(atfadi$ADI,atfadi$Q9_2_4, 
+         alternative="greater", 
+         method= "pearson")
+```
+
+```{r}
+plot <- ggplot(atfadi, aes(x=as.factor(Q9_2_5), y=ADI, group=Q9_2_5))+
+  geom_boxplot(na.rm= TRUE) +
+  labs(x='First thing to cut in budget crisis- Public Library', y= 'Area Deprivation Index', title = "Willingness to Cut Library Funding by ADI", caption = "Dataset: atfadi")+
+    scale_x_discrete(labels = c('1'= '1 Strongly Disagree', '2'='2', '3'='3', '4'='4', "5"= '5', "6"='6', "7"='7', "8"='8', "9"='9', '10'= "10 Strongly
+    Agree"))
+plot
+
+cor.test(atfadi$ADI,atfadi$Q9_2_5, 
+         alternative="greater", 
+         method= "pearson")
 ```
 
 # Discussion
 
-There are some differences between library visitors and non-visitors
+A key takeaway from this report is that there are some differences
+between how library visitors and non-visitors view their library. People
+who visit their library are more openly supportive of it. They have a
+more positive attitude toward it. They may even be more willing to
+support it financially. This is important to the extent that libraries
+may be able to mobilize their patronage to secure more funding.
 
-# Limitations
-The analysis presented in this project are broad 
+Some of the analyses presented in this report conflicted with my
+expectations. Particularly when it came to ADI, the correlations I
+expected simply did not exist. This may have been due to limitations of
+the data itself. First, ADI is a broad measure, which seeks to quantify
+many other measures of socioeconomic status into one variable. By
+simplifying these measures, some of the nuanced ways of quantifying a
+community's status are lost. This report also sought to compare
+libraries across the US and its territories. There is huge variation
+between these communities and how they use their libraries. It is
+possible that many of the comparisons made here are confounded by
+factors like population size, geographic area covered, and size of
+library system. Attempts were made to address these confounds, but there
+seemed to be some inconsistencies in data collection. Additionally, this
+data included only the zip code of the central library for any given
+system. This is an issue for any library system that contains multiple
+branches across different zip codes. The comparisons of ADI and other
+variables in the PLS dataset do not accurately capture these libraries.
 
- We are only looking at the zip code of the cental branch
-
-this data is from 2020, and things have likely changed since the
-pandemic.
-
-ADI is a broad measure
-There seem to be some reporting issues within the PLS data
+It is also important to consider what has changed since this data was
+collected in 2018. Since the COVID-19 pandemic, people's views of
+education and public resources have shifted. Libraries have offered more
+online services to keep up with shifting usage. It would be very
+interesting to compare how their usage and perception has changed.
 
 # Citations
 
 Pelczar, M., Frehill, L. M., Nielsen, E., & Li, J. (2020). Data File
 Documentation: Public Libraries in the United States Fiscal Year 2018.
-Institute of Museum and Library Services: Washington, D.C.
+Institute of Museum and Library Services: Washington, D.C.				
 
-@article{taylor2000does, title={Does internet research work?},
-author={Taylor, Humphrey}, journal={International journal of market
-research}, volume={42}, number={1}, pages={1--11}, year={2000},
-publisher={SAGE Publications Sage UK: London, England} }
+OCLC and American Library Association. (2018). From Awareness to
+Funding: Voter Perceptions and Supportof Public Libraries in 2018.
+Dublin, OH: OCLC. <https://doi.org/10.25333/C3M92X.>
+
+BroadStreet. (2018). Area Deprivation Index (ADI). BroadStreet and
+American Community Survey.
